@@ -1,19 +1,80 @@
-import { useState } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 import svgPathsDoctor from "../imports/svg-4215pobdy5";
 import svgPathsAdmin from "../imports/svg-mcluuyz340";
 import imgImage5 from "figma:asset/5017518084d8e2da3eb7a4d8843f9a47b53a628c.png";
+import { useStableForm } from './useStableForm';
 
 interface RegistrationPageProps {
   onNavigateToLogin: () => void;
   onRegister: (userType: 'doctor' | 'admin', formData: any) => void;
 }
 
+interface FormFieldProps {
+  label: string;
+  icon: React.ReactNode;
+  type?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder: string;
+  showToggle?: boolean;
+  isPasswordVisible?: boolean;
+  onTogglePassword?: () => void;
+}
+
+const FormField = memo(({ 
+  label, 
+  icon, 
+  type = "text", 
+  value, 
+  onChange,
+  placeholder, 
+  showToggle = false,
+  isPasswordVisible = false,
+  onTogglePassword 
+}: FormFieldProps) => (
+  <div className="space-y-2">
+    <div className="flex items-center space-x-3">
+      <div className="w-6 h-6 lg:w-7 lg:h-7 flex-shrink-0">
+        {icon}
+      </div>
+      <label className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-semibold text-black opacity-70">
+        {label}
+      </label>
+    </div>
+    <div className="relative">
+      <div className="absolute inset-0 bg-[#8FD0C6] opacity-20 rounded-2xl shadow-lg"></div>
+      <input
+        type={showToggle ? (isPasswordVisible ? "text" : "password") : type}
+        value={value}
+        onChange={onChange}
+        className={`relative w-full h-12 sm:h-14 lg:h-16 bg-transparent px-4 lg:px-6 ${showToggle ? 'pr-12 lg:pr-16' : ''} outline-none text-black placeholder-gray-500 text-sm sm:text-base lg:text-lg rounded-2xl`}
+        placeholder={placeholder}
+        required
+      />
+      {showToggle && (
+        <button
+          type="button"
+          onClick={onTogglePassword}
+          className="absolute right-3 lg:right-4 top-1/2 transform -translate-y-1/2 w-6 h-6 lg:w-7 lg:h-7 cursor-pointer hover:opacity-70 transition-opacity"
+        >
+          <svg className="block w-full h-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+            <g id="mi:eye-off">
+              <path d={svgPathsDoctor.p20746200} fill="black" id="Vector" />
+            </g>
+          </svg>
+        </button>
+      )}
+    </div>
+  </div>
+));
+
 export function RegistrationPage({ onNavigateToLogin, onRegister }: RegistrationPageProps) {
   const [activeTab, setActiveTab] = useState<'doctor' | 'admin'>('doctor');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  const [doctorForm, setDoctorForm] = useState({
+  // Initialize stable forms
+  const doctorFormHook = useStableForm({
     fullName: '',
     doctorId: '',
     email: '',
@@ -24,7 +85,7 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
     confirmPassword: ''
   });
 
-  const [adminForm, setAdminForm] = useState({
+  const adminFormHook = useStableForm({
     fullName: '',
     adminId: '',
     email: '',
@@ -34,77 +95,46 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
   });
 
   const svgPaths = activeTab === 'doctor' ? svgPathsDoctor : svgPathsAdmin;
-  const currentForm = activeTab === 'doctor' ? doctorForm : adminForm;
-  const setCurrentForm = activeTab === 'doctor' ? setDoctorForm : setAdminForm;
+  const currentForm = activeTab === 'doctor' ? doctorFormHook.formData : adminFormHook.formData;
+  const currentFormHook = activeTab === 'doctor' ? doctorFormHook : adminFormHook;
 
-  const handleInputChange = (field: string, value: string) => {
-    setCurrentForm(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  // Create stable input change handler
+  const handleInputChange = useCallback((field: string, value: string) => {
+    if (activeTab === 'doctor') {
+      doctorFormHook.handleInputChange(field, value);
+    } else {
+      adminFormHook.handleInputChange(field, value);
+    }
+  }, [activeTab, doctorFormHook.handleInputChange, adminFormHook.handleInputChange]);
+
+  // Create stable field handlers for doctor form
+  const doctorFieldHandlers = useMemo(() => ({
+    fullName: (e: React.ChangeEvent<HTMLInputElement>) => doctorFormHook.handleInputChange('fullName', e.target.value),
+    doctorId: (e: React.ChangeEvent<HTMLInputElement>) => doctorFormHook.handleInputChange('doctorId', e.target.value),
+    email: (e: React.ChangeEvent<HTMLInputElement>) => doctorFormHook.handleInputChange('email', e.target.value),
+    contactNumber: (e: React.ChangeEvent<HTMLInputElement>) => doctorFormHook.handleInputChange('contactNumber', e.target.value),
+    department: (e: React.ChangeEvent<HTMLInputElement>) => doctorFormHook.handleInputChange('department', e.target.value),
+    licenseNumber: (e: React.ChangeEvent<HTMLInputElement>) => doctorFormHook.handleInputChange('licenseNumber', e.target.value),
+    password: (e: React.ChangeEvent<HTMLInputElement>) => doctorFormHook.handleInputChange('password', e.target.value),
+    confirmPassword: (e: React.ChangeEvent<HTMLInputElement>) => doctorFormHook.handleInputChange('confirmPassword', e.target.value),
+  }), [doctorFormHook.handleInputChange]);
+
+  // Create stable field handlers for admin form
+  const adminFieldHandlers = useMemo(() => ({
+    fullName: (e: React.ChangeEvent<HTMLInputElement>) => adminFormHook.handleInputChange('fullName', e.target.value),
+    adminId: (e: React.ChangeEvent<HTMLInputElement>) => adminFormHook.handleInputChange('adminId', e.target.value),
+    email: (e: React.ChangeEvent<HTMLInputElement>) => adminFormHook.handleInputChange('email', e.target.value),
+    contactNumber: (e: React.ChangeEvent<HTMLInputElement>) => adminFormHook.handleInputChange('contactNumber', e.target.value),
+    password: (e: React.ChangeEvent<HTMLInputElement>) => adminFormHook.handleInputChange('password', e.target.value),
+    confirmPassword: (e: React.ChangeEvent<HTMLInputElement>) => adminFormHook.handleInputChange('confirmPassword', e.target.value),
+  }), [adminFormHook.handleInputChange]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onRegister(activeTab, currentForm);
   };
 
-  const FormField = ({ 
-    label, 
-    icon, 
-    type = "text", 
-    value, 
-    onChange, 
-    placeholder, 
-    showToggle = false,
-    isPasswordVisible = false,
-    onTogglePassword 
-  }: {
-    label: string;
-    icon: React.ReactNode;
-    type?: string;
-    value: string;
-    onChange: (value: string) => void;
-    placeholder: string;
-    showToggle?: boolean;
-    isPasswordVisible?: boolean;
-    onTogglePassword?: () => void;
-  }) => (
-    <div className="space-y-1 sm:space-y-2">
-      <div className="flex items-center space-x-2 sm:space-x-3">
-        <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 flex-shrink-0">
-          {icon}
-        </div>
-        <label className="text-xs sm:text-sm lg:text-base font-bold text-black">
-          {label}
-        </label>
-      </div>
-      <div className="relative">
-        <div className="absolute inset-0 bg-[rgba(143,208,198,0.2)] rounded-xl shadow-md"></div>
-        <input
-          type={showToggle ? (isPasswordVisible ? "text" : "password") : type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="relative w-full h-8 sm:h-10 lg:h-12 bg-transparent px-3 sm:px-4 outline-none text-black placeholder-gray-500 text-xs sm:text-sm lg:text-base rounded-xl"
-          placeholder={placeholder}
-          required
-        />
-        {showToggle && (
-          <button
-            type="button"
-            onClick={onTogglePassword}
-            className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 cursor-pointer hover:opacity-70 transition-opacity"
-          >
-            <svg className="block w-full h-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-              <g id="mi:eye-off">
-                <path d={svgPaths.p20746200} fill="black" id="Vector" />
-              </g>
-            </svg>
-          </button>
-        )}
-      </div>
-    </div>
-  );
+
 
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
@@ -169,7 +199,7 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
           <div className="flex-1 flex items-start justify-center p-4 sm:p-6 lg:p-8">
             <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl">
               <div className="bg-[rgba(255,255,255,0.56)] backdrop-blur-sm rounded-2xl shadow-2xl p-4 sm:p-6 lg:p-8 w-full">
-                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 lg:space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6 lg:space-y-8">
                   {activeTab === 'doctor' ? (
                     <>
                       <FormField
@@ -182,8 +212,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                             </g>
                           </svg>
                         }
-                        value={doctorForm.fullName}
-                        onChange={(value) => handleInputChange('fullName', value)}
+                        value={doctorFormHook.formData.fullName}
+                        onChange={doctorFieldHandlers.fullName}
                         placeholder="Enter full name"
                       />
                       
@@ -197,8 +227,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                             </g>
                           </svg>
                         }
-                        value={doctorForm.doctorId}
-                        onChange={(value) => handleInputChange('doctorId', value)}
+                        value={doctorFormHook.formData.doctorId}
+                        onChange={doctorFieldHandlers.doctorId}
                         placeholder="Enter doctor ID"
                       />
                       
@@ -217,8 +247,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                           </svg>
                         }
                         type="email"
-                        value={doctorForm.email}
-                        onChange={(value) => handleInputChange('email', value)}
+                        value={doctorFormHook.formData.email}
+                        onChange={doctorFieldHandlers.email}
                         placeholder="Enter email address"
                       />
                       
@@ -232,8 +262,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                           </svg>
                         }
                         type="tel"
-                        value={doctorForm.contactNumber}
-                        onChange={(value) => handleInputChange('contactNumber', value)}
+                        value={doctorFormHook.formData.contactNumber}
+                        onChange={doctorFieldHandlers.contactNumber}
                         placeholder="Enter contact number"
                       />
                       
@@ -246,8 +276,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                             </g>
                           </svg>
                         }
-                        value={doctorForm.department}
-                        onChange={(value) => handleInputChange('department', value)}
+                        value={doctorFormHook.formData.department}
+                        onChange={doctorFieldHandlers.department}
                         placeholder="Enter department"
                       />
                       
@@ -260,8 +290,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                             </g>
                           </svg>
                         }
-                        value={doctorForm.licenseNumber}
-                        onChange={(value) => handleInputChange('licenseNumber', value)}
+                        value={doctorFormHook.formData.licenseNumber}
+                        onChange={doctorFieldHandlers.licenseNumber}
                         placeholder="Enter license number"
                       />
                       
@@ -274,8 +304,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                             </g>
                           </svg>
                         }
-                        value={doctorForm.password}
-                        onChange={(value) => handleInputChange('password', value)}
+                        value={doctorFormHook.formData.password}
+                        onChange={doctorFieldHandlers.password}
                         placeholder="Enter password"
                         showToggle={true}
                         isPasswordVisible={showPassword}
@@ -291,8 +321,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                             </g>
                           </svg>
                         }
-                        value={doctorForm.confirmPassword}
-                        onChange={(value) => handleInputChange('confirmPassword', value)}
+                        value={doctorFormHook.formData.confirmPassword}
+                        onChange={doctorFieldHandlers.confirmPassword}
                         placeholder="Confirm password"
                         showToggle={true}
                         isPasswordVisible={showConfirmPassword}
@@ -311,8 +341,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                             </g>
                           </svg>
                         }
-                        value={adminForm.fullName}
-                        onChange={(value) => handleInputChange('fullName', value)}
+                        value={adminFormHook.formData.fullName}
+                        onChange={adminFieldHandlers.fullName}
                         placeholder="Enter full name"
                       />
                       
@@ -325,8 +355,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                             </g>
                           </svg>
                         }
-                        value={adminForm.adminId}
-                        onChange={(value) => handleInputChange('adminId', value)}
+                        value={adminFormHook.formData.adminId}
+                        onChange={adminFieldHandlers.adminId}
                         placeholder="Enter admin ID"
                       />
                       
@@ -345,8 +375,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                           </svg>
                         }
                         type="email"
-                        value={adminForm.email}
-                        onChange={(value) => handleInputChange('email', value)}
+                        value={adminFormHook.formData.email}
+                        onChange={adminFieldHandlers.email}
                         placeholder="Enter email address"
                       />
                       
@@ -360,8 +390,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                           </svg>
                         }
                         type="tel"
-                        value={adminForm.contactNumber}
-                        onChange={(value) => handleInputChange('contactNumber', value)}
+                        value={adminFormHook.formData.contactNumber}
+                        onChange={adminFieldHandlers.contactNumber}
                         placeholder="Enter contact number"
                       />
                       
@@ -374,8 +404,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                             </g>
                           </svg>
                         }
-                        value={adminForm.password}
-                        onChange={(value) => handleInputChange('password', value)}
+                        value={adminFormHook.formData.password}
+                        onChange={adminFieldHandlers.password}
                         placeholder="Enter password"
                         showToggle={true}
                         isPasswordVisible={showPassword}
@@ -391,8 +421,8 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                             </g>
                           </svg>
                         }
-                        value={adminForm.confirmPassword}
-                        onChange={(value) => handleInputChange('confirmPassword', value)}
+                        value={adminFormHook.formData.confirmPassword}
+                        onChange={adminFieldHandlers.confirmPassword}
                         placeholder="Confirm password"
                         showToggle={true}
                         isPasswordVisible={showConfirmPassword}
@@ -402,12 +432,12 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
                   )}
                   
                   {/* Action Buttons */}
-                  <div className="space-y-3 sm:space-y-4 pt-4">
+                  <div className="space-y-6 lg:space-y-8 pt-6">
                     <button
                       type="submit"
-                      className="w-full bg-[#2a7a6e] h-10 sm:h-12 lg:h-14 rounded-xl hover:bg-[#245a50] transition-colors cursor-pointer flex items-center justify-center shadow-lg"
+                      className="w-full bg-[#2a7a6e] h-12 sm:h-14 lg:h-16 rounded-2xl hover:bg-[#245a50] transition-colors cursor-pointer flex items-center justify-center shadow-lg"
                     >
-                      <span className="text-sm sm:text-base lg:text-lg xl:text-xl font-bold text-white">
+                      <span className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-semibold text-white">
                         SignUp
                       </span>
                     </button>

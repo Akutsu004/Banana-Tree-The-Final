@@ -199,7 +199,7 @@ export function Dashboard({ currentUser, onLogout, onBack }: DashboardProps) {
             image={imgInfo1}
             onClick={() => handleNavigate('employee-info')}
             className="h-[200px] md:h-[240px]"
-            imageClassName="aspect-[512/512] left-[27.78%] right-[27.78%] top-[40px]"
+            imageClassName="left-[100px] size-[160px] top-[40px]"
           />
           
           <DashboardButton
@@ -214,7 +214,7 @@ export function Dashboard({ currentUser, onLogout, onBack }: DashboardProps) {
             image={imgPrescription1}
             onClick={() => handleNavigate('prescriptions')}
             className="h-[200px] md:h-[240px]"
-            imageClassName="aspect-[512/512] left-[27.78%] right-[27.78%] top-[40px]"
+            imageClassName="left-[100px] size-[160px] top-[40px]"
           />
 
           {/* Row 2 */}
