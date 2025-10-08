@@ -12,8 +12,7 @@ interface ViewPatientPageProps {
     firstName: string;
     lastName: string;
     dateOfBirth: string;
-    primaryNumber: string;
-    secondaryNumber: string;
+    contactNumber: string;
     email: string;
     address: string;
     status: string;
@@ -134,13 +133,8 @@ export function ViewPatientPage({ currentUser, onBack, onEdit, onLogout, patient
                   <h4 className="text-lg font-semibold text-[#2a7a6e] mb-3">Contact Information</h4>
                   
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Primary Phone Number</label>
-                    <p className="text-base text-black font-mono">{patient.primaryNumber}</p>
-                  </div>
-
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Phone Number</label>
-                    <p className="text-base text-black font-mono">{patient.secondaryNumber}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Conctact Number</label>
+                    <p className="text-base text-black font-mono">{patient.contactNumber}</p>
                   </div>
 
                   <div className="bg-gray-50 p-4 rounded-lg">

@@ -178,7 +178,9 @@ export function Dashboard({ currentUser, onLogout, onBack }: DashboardProps) {
           </div>
           <div className="hidden sm:block">
             <p className="text-sm md:text-lg lg:text-xl font-semibold text-black">
-              {currentUser?.data?.username || 'Sofia Smith'}
+              {currentUser?.data?.user_metadata?.fullName ||
+               currentUser?.data?.email ||
+               'User'}
             </p>
           </div>
         </div>

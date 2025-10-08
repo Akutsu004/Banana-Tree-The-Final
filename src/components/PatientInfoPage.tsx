@@ -12,8 +12,7 @@ interface PatientInfoPageProps {
     firstName: string;
     lastName: string;
     dateOfBirth: string;
-    primaryNumber: string;
-    secondaryNumber: string;
+    contactNumber: string;
     email: string;
     address: string;
     status: string;
@@ -154,8 +153,7 @@ export function PatientInfoPage({ currentUser, onBack, onEdit, onLogout, patient
             {/* Patient Information Card */}
             <InfoCard title="PATIENT INFORMATION" className="h-fit">
               <InfoField label="Patient ID" value={patient.patientId} />
-              <InfoField label="Primary Number" value={patient.primaryNumber} />
-              <InfoField label="Secondary Number" value={patient.secondaryNumber} />
+              <InfoField label="Contact Number" value={patient.contactNumber} />
               <InfoField label="Email" value={patient.email} />
             </InfoCard>
           </div>

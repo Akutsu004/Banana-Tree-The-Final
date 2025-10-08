@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
 import svgPaths from "../imports/svg-2995e1jrk7";
 import { ViewDailyRoundsPage } from './ViewDailyRoundsPage';
 import { EditDailyRoundsPage } from './EditDailyRoundsPage';
@@ -30,7 +31,6 @@ interface DailyRoundsRecord {
   diagnosis: string;
   treatmentPlanId: string;
   allergies: string;
-  notes: string;
   status: string;
 }
 
@@ -38,63 +38,53 @@ export function DailyRoundsListPage({ currentUser, onBack, onLogout }: DailyRoun
   const [searchTerm, setSearchTerm] = useState('');
   const [currentView, setCurrentView] = useState<'list' | 'view' | 'edit' | 'add'>('list');
   const [selectedRecord, setSelectedRecord] = useState<DailyRoundsRecord | null>(null);
-  
-  const [dailyRoundsRecords, setDailyRoundsRecords] = useState<DailyRoundsRecord[]>([
-    {
-      id: '1',
-      patientId: '2000004',
-      patientName: 'Mark Solomon',
-      appointmentId: '9000004',
-      doctorInCharge: 'Dr. Pinkman',
-      appointmentSchedule: '01/15/2025',
-      appointmentTime: '10:00 AM',
-      duration: '45 minutes',
-      recordId: '4000004',
-      underlyingCondition: 'Cardiovascular disease',
-      prescriptionId: '6000004',
-      diagnosis: 'Routine dental examination with preventive care recommendations',
-      treatmentPlanId: '5000004',
-      allergies: 'Latex',
-      notes: 'Patient vital signs stable. Blood pressure monitored throughout appointment. Recommended cardiac clearance for future procedures.',
-      status: 'Active'
-    },
-    {
-      id: '2',
-      patientId: '2000005',
-      patientName: 'Sarah Wilson',
-      appointmentId: '9000005',
-      doctorInCharge: 'Dr. Martinez',
-      appointmentSchedule: '01/16/2025',
-      appointmentTime: '2:30 PM',
-      duration: '30 minutes',
-      recordId: '4000005',
-      underlyingCondition: 'Anxiety disorder',
-      prescriptionId: '6000005',
-      diagnosis: 'Cavity treatment with sedation protocols followed',
-      treatmentPlanId: '5000005',
-      allergies: 'Codeine',
-      notes: 'Patient required mild sedation for procedure. Monitored closely for anxiety levels. Post-procedure recovery normal.',
-      status: 'Completed'
-    },
-    {
-      id: '3',
-      patientId: '2000006',
-      patientName: 'Robert Brown',
-      appointmentId: '9000006',
-      doctorInCharge: 'Dr. Chen',
-      appointmentSchedule: '01/17/2025',
-      appointmentTime: '11:15 AM',
-      duration: '60 minutes',
-      recordId: '4000006',
-      underlyingCondition: 'Diabetes Type 1',
-      prescriptionId: '6000006',
-      diagnosis: 'Periodontal therapy with blood glucose monitoring',
-      treatmentPlanId: '5000006',
-      allergies: 'None',
-      notes: 'Blood glucose levels monitored before and during procedure. Healing progress satisfactory. Continue diabetes management protocols.',
-      status: 'In Progress'
-    }
-  ]);
+  const [dailyRoundsRecords, setDailyRoundsRecords] = useState<DailyRoundsRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch daily rounds from Supabase
+  useEffect(() => {
+    const fetchDailyRounds = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('daily_round_id')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data) {
+          setDailyRoundsRecords(
+            data.map((row: any) => ({
+              id: row.id,
+              patientId: row.patient_id,
+              patientName: row.patient_name,
+              appointmentId: row.appointment_id,
+              doctorInCharge: row.doctor_in_charge,
+              appointmentSchedule: row.appointment_schedule,
+              appointmentTime: row.appointment_time,
+              duration: row.duration,
+              recordId: row.record_id,
+              underlyingCondition: row.underlying_condition,
+              prescriptionId: row.prescription_id,
+              diagnosis: row.diagnosis,
+              treatmentPlanId: row.treatment_plan_id,
+              allergies: row.allergies,
+              notes: row.notes,
+              status: row.status || 'Active',
+            }))
+          );
+        }
+      } catch (error: any) {
+        console.error('Error fetching daily rounds:', error.message);
+        alert('Failed to load daily rounds data.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDailyRounds();
+  }, []);
 
   // Filter records based on search term
   const filteredRecords = dailyRoundsRecords.filter(record =>
@@ -119,9 +109,22 @@ export function DailyRoundsListPage({ currentUser, onBack, onLogout }: DailyRoun
     setCurrentView('edit');
   };
 
-  const handleRemove = (recordId: string) => {
+  const handleRemove = async (recordId: string) => {
     if (confirm('Are you sure you want to remove this daily rounds record?')) {
-      setDailyRoundsRecords(dailyRoundsRecords.filter(record => record.id !== recordId));
+      try {
+        const { error } = await supabase
+          .from('daily_round_id')
+          .delete()
+          .eq('id', recordId);
+
+        if (error) throw error;
+
+        setDailyRoundsRecords(dailyRoundsRecords.filter(record => record.id !== recordId));
+        alert('Record removed successfully!');
+      } catch (error: any) {
+        console.error('Error removing record:', error.message);
+        alert('Failed to remove record. Please try again.');
+      }
     }
   };
 
@@ -129,7 +132,7 @@ export function DailyRoundsListPage({ currentUser, onBack, onLogout }: DailyRoun
     setCurrentView('add');
   };
 
-  const handleAddRecord = (formData: any) => {
+  const handleAddRecord = async (formData: any) => {
     const newRecord: DailyRoundsRecord = {
       id: String(dailyRoundsRecords.length + 1),
       patientId: formData.patientId || `200000${dailyRoundsRecords.length + 1}`,
@@ -148,20 +151,82 @@ export function DailyRoundsListPage({ currentUser, onBack, onLogout }: DailyRoun
       notes: formData.notes || 'New daily rounds record',
       status: 'Scheduled'
     };
-    setDailyRoundsRecords([...dailyRoundsRecords, newRecord]);
-    setCurrentView('list');
+
+    try {
+      const { error } = await supabase
+        .from('daily_rounds')
+        .insert([{
+          patient_id: newRecord.patientId,
+          patient_name: newRecord.patientName,
+          appointment_id: newRecord.appointmentId,
+          doctor_in_charge: newRecord.doctorInCharge,
+          appointment_schedule: newRecord.appointmentSchedule,
+          appointment_time: newRecord.appointmentTime,
+          duration: newRecord.duration,
+          record_id: newRecord.recordId,
+          underlying_condition: newRecord.underlyingCondition,
+          prescription_id: newRecord.prescriptionId,
+          diagnosis: newRecord.diagnosis,
+          treatment_plan_id: newRecord.treatmentPlanId,
+          allergies: newRecord.allergies,
+          notes: newRecord.notes,
+          status: newRecord.status,
+        }]);
+
+      if (error) throw error;
+
+      setDailyRoundsRecords([...dailyRoundsRecords, newRecord]);
+      setCurrentView('list');
+      alert('Daily round added successfully!');
+    } catch (error: any) {
+      console.error('Error adding daily round:', error.message);
+      alert('Failed to add daily round. Please try again.');
+    }
   };
 
-  const handleUpdateRecord = (formData: any) => {
-    if (selectedRecord) {
-      const updatedRecords = dailyRoundsRecords.map(record => 
-        record.id === selectedRecord.id 
-          ? { ...record, ...formData }
-          : record
+  const handleUpdateRecord = async (formData: any) => {
+    if (!selectedRecord) return;
+
+    const updatedRecord: DailyRoundsRecord = {
+      ...selectedRecord,
+      ...formData,
+    };
+
+    try {
+      const { error } = await supabase
+        .from('daily_rounds')
+        .update({
+          patient_id: updatedRecord.patientId,
+          patient_name: updatedRecord.patientName,
+          appointment_id: updatedRecord.appointmentId,
+          doctor_in_charge: updatedRecord.doctorInCharge,
+          appointment_schedule: updatedRecord.appointmentSchedule,
+          appointment_time: updatedRecord.appointmentTime,
+          duration: updatedRecord.duration,
+          record_id: updatedRecord.recordId,
+          underlying_condition: updatedRecord.underlyingCondition,
+          prescription_id: updatedRecord.prescriptionId,
+          diagnosis: updatedRecord.diagnosis,
+          treatment_plan_id: updatedRecord.treatmentPlanId,
+          allergies: updatedRecord.allergies,
+          notes: updatedRecord.notes,
+          status: updatedRecord.status,
+        })
+        .eq('id', updatedRecord.id);
+
+      if (error) throw error;
+
+      setDailyRoundsRecords(
+        dailyRoundsRecords.map(record =>
+          record.id === updatedRecord.id ? updatedRecord : record
+        )
       );
-      setDailyRoundsRecords(updatedRecords);
-      setSelectedRecord({ ...selectedRecord, ...formData });
+      setSelectedRecord(updatedRecord);
       setCurrentView('view');
+      alert('Daily round updated successfully!');
+    } catch (error: any) {
+      console.error('Error updating daily round:', error.message);
+      alert('Failed to update daily round. Please try again.');
     }
   };
 
@@ -181,7 +246,7 @@ export function DailyRoundsListPage({ currentUser, onBack, onLogout }: DailyRoun
     return (
       <button
         onClick={onClick}
-        className={`w-8 h-8 bg-[#00b7c2] rounded hover:bg-[#008a94] transition-colors flex items-center justify-center ${className}`}
+        className={`w-8 h-8 ${type === 'remove' ? 'bg-red-500 hover:bg-red-600' : 'bg-[#00b7c2] hover:bg-[#008a94]'} rounded transition-colors flex items-center justify-center ${className}`}
         title={`${type.charAt(0).toUpperCase() + type.slice(1)} record`}
       >
         <img 
@@ -246,7 +311,7 @@ export function DailyRoundsListPage({ currentUser, onBack, onLogout }: DailyRoun
     );
   }
 
-  // Main list view - following the standard medical system structure
+  // Main list view
   return (
     <div className="h-screen bg-[#e0e0e0] overflow-hidden">
       <div className="relative w-full h-full overflow-hidden">
@@ -291,7 +356,7 @@ export function DailyRoundsListPage({ currentUser, onBack, onLogout }: DailyRoun
           <div className="flex-1 flex flex-col p-3 md:p-4 overflow-hidden">
             {/* Page Title */}
             <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-black mb-1 tracking-wider">
-              Daily Rounds & Patient Monitoring Dashboard (Patient List)
+              Daily Rounds & Patient Monitoring Dashboard
             </h2>
             <div className="w-full h-0.5 bg-black mb-4"></div>
 
@@ -323,165 +388,78 @@ export function DailyRoundsListPage({ currentUser, onBack, onLogout }: DailyRoun
               </button>
             </div>
 
-            {/* Patient Records Table */}
-            <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden min-h-0">
-              {/* Desktop Table View */}
-              <div className="hidden lg:block h-full">
-                {/* Table Header */}
-                <div className="bg-[#2a7a6e] text-white">
-                  <div className="grid grid-cols-12 gap-2 p-3 text-xs font-medium tracking-wider">
-                    <div className="col-span-1.5 text-center">Patient ID</div>
-                    <div className="col-span-2 text-center">Patient Name</div>
-                    <div className="col-span-1.5 text-center">Appointment ID</div>
-                    <div className="col-span-2 text-center">Doctor</div>
-                    <div className="col-span-1.5 text-center">Schedule</div>
-                    <div className="col-span-2 text-center">Diagnosis</div>
-                    <div className="col-span-1 text-center">Status</div>
-                    <div className="col-span-1 text-center">Action</div>
-                  </div>
-                </div>
-
-                {/* Table Body */}
-                <div className="divide-y divide-gray-200 h-[calc(100%-52px)] overflow-y-auto">
-                  {filteredRecords.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">
-                      {searchTerm ? 'No records found matching your search.' : 'No daily rounds records available.'}
-                    </div>
-                  ) : (
-                    filteredRecords.map((record) => (
-                      <div key={record.id} className="grid grid-cols-12 gap-2 p-3 hover:bg-gray-50 transition-colors">
-                        <div className="col-span-1.5 text-center text-xs font-mono text-black tracking-wider">
-                          {record.patientId}
-                        </div>
-                        <div className="col-span-2 text-center text-xs font-mono text-black tracking-wider">
-                          {record.patientName}
-                        </div>
-                        <div className="col-span-1.5 text-center text-xs font-mono text-black tracking-wider">
-                          {record.appointmentId}
-                        </div>
-                        <div className="col-span-2 text-center text-xs font-mono text-black tracking-wider">
-                          <div className="truncate" title={record.doctorInCharge}>
-                            {record.doctorInCharge}
-                          </div>
-                        </div>
-                        <div className="col-span-1.5 text-center text-xs font-mono text-black tracking-wider">
-                          <div>
-                            <div>{record.appointmentSchedule}</div>
-                            <div className="text-gray-600">{record.appointmentTime}</div>
-                          </div>
-                        </div>
-                        <div className="col-span-2 text-center text-xs font-mono text-black tracking-wider">
-                          <div className="truncate" title={record.diagnosis}>
-                            {record.diagnosis.substring(0, 30)}...
-                          </div>
-                        </div>
-                        <div className="col-span-1 text-center text-xs font-mono tracking-wider">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(record.status)}`}>
-                            {record.status}
-                          </span>
-                        </div>
-                        <div className="col-span-1 flex justify-center space-x-1">
-                          <ActionButton
-                            type="view"
-                            onClick={() => handleView(record)}
-                          />
-                          <ActionButton
-                            type="edit"
-                            onClick={() => handleEdit(record)}
-                          />
-                          <ActionButton
-                            type="remove"
-                            onClick={() => handleRemove(record.id)}
-                          />
-                        </div>
-                      </div>
-                    ))
-                  )}
+            {/* Loading State */}
+            {loading ? (
+              <div className="flex-1 bg-white rounded-lg shadow-sm flex items-center justify-center">
+                <p className="text-gray-500">Loading daily rounds...</p>
+              </div>
+            ) : (
+              /* Patient Records Table */
+              <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden min-h-0">
+                <div className="overflow-x-auto h-full">
+                  <table className="w-full">
+                    <thead className="bg-[#2a7a6e] text-white sticky top-0">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Patient ID</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Patient Name</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Appointment ID</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Doctor</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Schedule</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Diagnosis</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredRecords.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
+                            {searchTerm ? 'No records found matching your search.' : 'No daily rounds records available.'}
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredRecords.map((record) => (
+                          <tr key={record.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-4 text-sm font-mono text-gray-900">{record.patientId}</td>
+                            <td className="px-4 py-4 text-sm text-gray-900">{record.patientName}</td>
+                            <td className="px-4 py-4 text-sm font-mono text-gray-900">{record.appointmentId}</td>
+                            <td className="px-4 py-4 text-sm text-gray-900 max-w-xs truncate" title={record.doctorInCharge}>
+                              {record.doctorInCharge}
+                            </td>
+                            <td className="px-4 py-4 text-sm text-gray-900">
+                              <div>{record.appointmentSchedule}</div>
+                              <div className="text-gray-600 text-xs">{record.appointmentTime}</div>
+                            </td>
+                            <td className="px-4 py-4 text-sm text-gray-900 max-w-xs truncate" title={record.diagnosis}>
+                              {record.diagnosis}
+                            </td>
+                            <td className="px-4 py-4 text-sm">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(record.status)}`}>
+                                {record.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-sm">
+                              <div className="flex items-center justify-center space-x-2">
+                                <ActionButton type="view" onClick={() => handleView(record)} />
+                                <ActionButton type="edit" onClick={() => handleEdit(record)} />
+                                <ActionButton type="remove" onClick={() => handleRemove(record.id)} />
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-
-              {/* Mobile Card View */}
-              <div className="lg:hidden h-full">
-                <div className="divide-y divide-gray-200 h-full overflow-y-auto">
-                  {filteredRecords.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">
-                      {searchTerm ? 'No records found matching your search.' : 'No daily rounds records available.'}
-                    </div>
-                  ) : (
-                    filteredRecords.map((record) => (
-                      <div key={record.id} className="p-4 hover:bg-gray-50 transition-colors">
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="text-gray-600">Patient:</p>
-                              <p className="font-mono text-black font-medium">{record.patientName}</p>
-                            </div>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(record.status)}`}>
-                              {record.status}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <p className="text-gray-600">Patient ID:</p>
-                              <p className="font-mono text-black">{record.patientId}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-600">Appointment ID:</p>
-                              <p className="font-mono text-black">{record.appointmentId}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-600">Doctor:</p>
-                              <p className="font-mono text-black">{record.doctorInCharge}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-600">Schedule:</p>
-                              <p className="font-mono text-black">{record.appointmentSchedule}</p>
-                              <p className="font-mono text-gray-600 text-sm">{record.appointmentTime}</p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="text-gray-600">Diagnosis:</p>
-                              <p className="font-mono text-black truncate" title={record.diagnosis}>
-                                {record.diagnosis.substring(0, 40)}...
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex justify-center space-x-2 pt-2 border-t border-gray-200">
-                            <ActionButton
-                              type="view"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleView(record);
-                              }}
-                            />
-                            <ActionButton
-                              type="edit"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(record);
-                              }}
-                            />
-                            <ActionButton
-                              type="remove"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemove(record.id);
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Logout Button */}
           <div className="absolute bottom-4 right-4 md:bottom-6 md:right-6">
             <button
               onClick={onLogout}
-              className="flex items-center space-x-2 text-black hover:text-[#2a7a6e] transition-colors bg-white bg-opacity-80 px-3 py-2 rounded-lg hover:bg-opacity-100"
+              className="flex items-center space-x-2 text-black hover:text-[#2a7a6e] transition-colors bg-white bg-opacity-80 px-3 py-2 rounded-lg hover:bg-opacity-100 shadow-lg"
             >
               <div className="w-3 h-3 md:w-4 md:h-4">
                 <svg className="block w-full h-full" fill="none" preserveAspectRatio="none" viewBox="0 0 15 13">
