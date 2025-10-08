@@ -4,6 +4,7 @@ import imgImage4 from "figma:asset/5017518084d8e2da3eb7a4d8843f9a47b53a628c.png"
 import imgInstagram from "figma:asset/f84727ee43d25ab1ff7ed6cb4ad7423f545650d3.png";
 import imgFacebook from "figma:asset/9e84bcc22ab8ec23ae4971f225dee1b960d2f65f.png";
 import imgTwitterX from "figma:asset/82a634843217f18585931b768ead7c64b575403b.png";
+import { supabase } from '../supabaseClient';
 
 interface LoginPageProps {
   onNavigateToRegister: () => void;
@@ -24,9 +25,19 @@ export function LoginPage({ onNavigateToRegister, onLogin }: LoginPageProps) {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin(loginForm.username, loginForm.password);
+    // Supabase sign in
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginForm.username,
+      password: loginForm.password,
+    });
+    if (error) {
+      alert(error.message);
+    } else {
+      // You can handle successful login here (e.g., redirect)
+      alert('Login successful!');
+    }
   };
 
   const handleForgotPassword = () => {

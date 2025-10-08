@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { supabase } from '../supabaseClient';
 import svgPaths from "../imports/svg-mgaydqwbhj";
 import imgRectangle62 from "figma:asset/f8ca17d17d2b55546c20bbcda787d678c2ea8e49.png";
 import imgVitalSigns21 from "figma:asset/44b4baf1b77716433605deebefe78561633c9dd5.png";
@@ -32,28 +33,97 @@ interface EmployeeData {
 
 export function EmployeeInfoPage({ currentUser, onBack, onLogout }: EmployeeInfoPageProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [employeeData, setEmployeeData] = useState<EmployeeData>({
-    name: currentUser?.data?.username || 'Sofia Smith',
-    age: 30,
-    sex: 'Female',
-    address: 'Metro Manila',
-    employeeId: '1000001',
-    position: currentUser?.type === 'doctor' ? 'Dentist' : 'Administrator',
-    department: currentUser?.type === 'doctor' ? 'General Dentistry' : 'Administration',
-    licenseNumber: currentUser?.type === 'doctor' ? 'DEN-2024-001' : undefined,
-    startDate: '2020-01-15'
-  });
+  const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
+  const [editForm, setEditForm] = useState<EmployeeData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const [editForm, setEditForm] = useState<EmployeeData>(employeeData);
+  // Fetch profile from Supabase
+  useEffect(() => {
+    const fetchProfile = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser?.data?.id)
+        .single();
+
+      if (data) {
+        setEmployeeData({
+          name: data.name,
+          age: data.age,
+          sex: data.sex,
+          address: data.address,
+          employeeId: data.employee_id,
+          position: data.position,
+          department: data.department,
+          licenseNumber: data.license_number,
+          startDate: data.start_date,
+        });
+        setEditForm({
+          name: data.name,
+          age: data.age,
+          sex: data.sex,
+          address: data.address,
+          employeeId: data.employee_id,
+          position: data.position,
+          department: data.department,
+          licenseNumber: data.license_number,
+          startDate: data.start_date,
+        });
+      } else if (!error) {
+        // No profile found, allow user to create one
+        const defaultProfile = {
+          name: currentUser?.data?.user_metadata?.fullName || '',
+          age: 0,
+          sex: '',
+          address: '',
+          employeeId: '',
+          position: '',
+          department: '',
+          licenseNumber: '',
+          startDate: '',
+        };
+        setEmployeeData(defaultProfile);
+        setEditForm(defaultProfile);
+        setIsEditing(true); // Start in edit mode
+      } else {
+        alert('Error loading profile');
+      }
+      setLoading(false);
+    };
+
+    if (currentUser?.data?.id) fetchProfile();
+  }, [currentUser]);
 
   const handleEdit = () => {
     setIsEditing(true);
     setEditForm(employeeData);
   };
 
-  const handleSave = () => {
-    setEmployeeData(editForm);
-    setIsEditing(false);
+  const handleSave = async () => {
+    if (!editForm) return;
+    // Update profile in Supabase
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        name: editForm.name,
+        age: editForm.age,
+        sex: editForm.sex,
+        address: editForm.address,
+        employee_id: editForm.employeeId,
+        position: editForm.position,
+        department: editForm.department,
+        license_number: editForm.licenseNumber,
+        start_date: editForm.startDate,
+      })
+      .eq('id', currentUser?.data?.id);
+
+    if (!error) {
+      setEmployeeData(editForm);
+      setIsEditing(false);
+    } else {
+      alert('Failed to update profile');
+    }
   };
 
   const handleCancel = () => {
@@ -106,30 +176,80 @@ export function EmployeeInfoPage({ currentUser, onBack, onLogout }: EmployeeInfo
   );
 
   const EditableField = ({
-    label,
-    value,
-    field,
-    type = "text"
-  }: {
-    label: string;
-    value: string | number;
-    field: keyof EmployeeData;
-    type?: string;
-  }) => (
-    <div className="mb-2">
-      <span className="block sm:inline">{label}: </span>
-      {isEditing ? (
+  label,
+  value,
+  field,
+  type = "text"
+}: {
+  label: string;
+  value: string | number;
+  field: keyof EmployeeData;
+  type?: string;
+}) => (
+  <div className="mb-2">
+    <span className="block sm:inline">{label}: </span>
+    {isEditing ? (
+      field === "sex" ? (
+        // ✅ Dropdown for "Sex"
+        <select
+          value={value as string}
+          onChange={(e) => handleInputChange(field, e.target.value)}
+          className="bg-transparent border-b border-gray-300 text-white outline-none focus:border-white ml-0 sm:ml-2 mt-1 sm:mt-0 w-full sm:w-auto"
+        >
+          <option value="" className="text-black">Select</option>
+          <option value="Male" className="text-black">Male</option>
+          <option value="Female" className="text-black">Female</option>
+          <option value="Other" className="text-black">Other</option>
+        </select>
+      ) : (
         <input
           type={type}
           value={value}
-          onChange={(e) => handleInputChange(field, type === 'number' ? Number(e.target.value) : e.target.value)}
+          onChange={(e) =>
+            handleInputChange(field, type === "number" ? Number(e.target.value) : e.target.value)
+          }
           className="bg-transparent border-b border-gray-300 text-white outline-none focus:border-white ml-0 sm:ml-2 mt-1 sm:mt-0 w-full sm:w-auto"
         />
-      ) : (
-        <span className="block sm:inline sm:ml-2 mt-1 sm:mt-0">{value}</span>
-      )}
+      )
+    ) : (
+      <span className="block sm:inline sm:ml-2 mt-1 sm:mt-0">{value}</span>
+    )}
+  </div>
+);
+
+
+  // In your render, show loading state if needed
+  if (loading) {
+  return <div className="p-8 text-center text-gray-600 text-lg">Loading employee profile...</div>;
+}
+
+if (!currentUser) {
+  return (
+    <div className="p-8 text-center text-gray-700">
+      <p>No user session found. Please log in again.</p>
+      <button
+        onClick={onLogout}
+        className="mt-4 px-4 py-2 bg-[#2a7a6e] text-white rounded-lg hover:bg-[#25665a] transition-colors"
+      >
+        Go to Login
+      </button>
     </div>
   );
+}
+
+if (!employeeData || !editForm) {
+  return (
+    <div className="p-8 text-center text-gray-700">
+      <p>Could not load employee profile.</p>
+      <button
+        onClick={() => window.location.reload()}
+        className="mt-4 px-4 py-2 bg-[#2a7a6e] text-white rounded-lg hover:bg-[#25665a] transition-colors"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen bg-[#e0e0e0] flex flex-col">

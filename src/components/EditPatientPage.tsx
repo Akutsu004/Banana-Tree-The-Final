@@ -13,8 +13,7 @@ interface EditPatientPageProps {
     firstName: string;
     lastName: string;
     dateOfBirth: string;
-    primaryNumber: string;
-    secondaryNumber: string;
+    contactNumber: string;
     email: string;
     address: string;
     status: string;
@@ -27,8 +26,7 @@ export function EditPatientPage({ currentUser, onBack, onSave, onLogout, patient
     firstName: patient.firstName,
     lastName: patient.lastName,
     dateOfBirth: patient.dateOfBirth,
-    primaryNumber: patient.primaryNumber,
-    secondaryNumber: patient.secondaryNumber,
+    contactNumber: patient.contactNumber,
     email: patient.email,
     address: patient.address
   });
@@ -204,7 +202,7 @@ export function EditPatientPage({ currentUser, onBack, onSave, onLogout, patient
 
         {/* Primary Number Field */}
         <p className="absolute font-['Source_Code_Pro:Bold',_sans-serif] font-bold inset-[51.43%_57.04%_45.29%_23.54%] leading-[normal] text-[18px] text-black tracking-[2.7px]">
-          Primary Number:
+          Contact Number:
         </p>
         <div className="absolute content-stretch flex flex-col gap-[8px] inset-[56.14%_57.2%_38.14%_23.38%] items-start" data-name="Input Field">
           <div className="bg-white min-w-[240px] relative rounded-[8px] shrink-0 w-full" data-name="Input">
@@ -212,28 +210,8 @@ export function EditPatientPage({ currentUser, onBack, onSave, onLogout, patient
               <div className="box-border content-stretch flex items-center min-w-inherit px-[16px] py-[12px] relative w-full">
                 <input
                   type="text"
-                  value={formData.primaryNumber}
-                  onChange={(e) => handleInputChange('primaryNumber', e.target.value)}
-                  className="basis-0 font-['Inter:Regular',_sans-serif] font-normal grow leading-none min-h-px min-w-px not-italic relative shrink-0 text-[#1e1e1e] text-[16px] bg-transparent border-none outline-none w-full"
-                />
-              </div>
-            </div>
-            <div aria-hidden="true" className="absolute border border-[#d9d9d9] border-solid inset-[-0.5px] pointer-events-none rounded-[8.5px]" />
-          </div>
-        </div>
-
-        {/* Secondary Number Field */}
-        <p className="absolute font-['Source_Code_Pro:Bold',_sans-serif] font-bold inset-[51.43%_35.19%_45.29%_45.39%] leading-[normal] text-[18px] text-black tracking-[2.7px]">
-          Secondary Number:
-        </p>
-        <div className="absolute content-stretch flex flex-col gap-[8px] inset-[56.14%_35.19%_38.14%_45.39%] items-start" data-name="Input Field">
-          <div className="bg-white min-w-[240px] relative rounded-[8px] shrink-0 w-full" data-name="Input">
-            <div className="flex flex-row items-center min-w-inherit overflow-clip rounded-[inherit] size-full">
-              <div className="box-border content-stretch flex items-center min-w-inherit px-[16px] py-[12px] relative w-full">
-                <input
-                  type="text"
-                  value={formData.secondaryNumber}
-                  onChange={(e) => handleInputChange('secondaryNumber', e.target.value)}
+                  value={formData.contactNumber}
+                  onChange={(e) => handleInputChange('contactNumber', e.target.value)}
                   className="basis-0 font-['Inter:Regular',_sans-serif] font-normal grow leading-none min-h-px min-w-px not-italic relative shrink-0 text-[#1e1e1e] text-[16px] bg-transparent border-none outline-none w-full"
                 />
               </div>

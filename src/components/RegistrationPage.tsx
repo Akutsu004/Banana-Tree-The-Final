@@ -2,6 +2,7 @@ import { useState } from 'react';
 import svgPathsDoctor from "../imports/svg-4215pobdy5";
 import svgPathsAdmin from "../imports/svg-mcluuyz340";
 import imgImage5 from "figma:asset/5017518084d8e2da3eb7a4d8843f9a47b53a628c.png";
+import { supabase } from '../supabaseClient';
 
 interface RegistrationPageProps {
   onNavigateToLogin: () => void;
@@ -44,67 +45,132 @@ export function RegistrationPage({ onNavigateToLogin, onRegister }: Registration
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onRegister(activeTab, currentForm);
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  const form = activeTab === "doctor" ? doctorForm : adminForm;
+
+  if (form.password !== form.confirmPassword) {
+    alert("Passwords do not match");
+    return;
+  }
+
+  // Step 1: Create user in Supabase Auth
+  const { data, error } = await supabase.auth.signUp({
+    email: form.email,
+    password: form.password,
+    options: {
+      data: {
+        fullName: form.fullName,
+        userType: activeTab,
+        contactNumber: form.contactNumber,
+        department: form.department,
+        licenseNumber: form.licenseNumber,
+      },
+    },
+  });
+
+  if (error) {
+    alert(`Registration failed: ${error.message}`);
+    return;
+  }
+
+  // Step 2: Insert into `profiles` table
+  if (data.user) {
+    const profileData = {
+      id: data.user.id, // same as auth.users.id
+      name: form.fullName,
+      age: null,
+      sex: null,
+      address: null,
+      employee_id:
+        activeTab === "doctor" ? form.doctorId : form.adminId,
+      position: activeTab,
+      department: form.department || null,
+      license_number: form.licenseNumber || null,
+      start_date: new Date().toISOString().split("T")[0],
+    };
+
+    const { error: insertError } = await supabase
+      .from("profiles")
+      .insert([profileData]);
+
+    if (insertError) {
+      console.error("Profile insert error:", insertError);
+      alert(`Failed to save profile: ${insertError.message}`);
+      return;
+    }
+  }
+
+  alert(
+    "Registration successful! Please check your email for confirmation."
+  );
+  onNavigateToLogin();
+};
 
   const FormField = ({ 
-    label, 
-    icon, 
-    type = "text", 
-    value, 
-    onChange, 
-    placeholder, 
-    showToggle = false,
-    isPasswordVisible = false,
-    onTogglePassword 
-  }: {
-    label: string;
-    icon: React.ReactNode;
-    type?: string;
-    value: string;
-    onChange: (value: string) => void;
-    placeholder: string;
-    showToggle?: boolean;
-    isPasswordVisible?: boolean;
-    onTogglePassword?: () => void;
-  }) => (
-    <div className="space-y-1 sm:space-y-2">
-      <div className="flex items-center space-x-2 sm:space-x-3">
-        <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 flex-shrink-0">
-          {icon}
-        </div>
-        <label className="text-xs sm:text-sm lg:text-base font-bold text-black">
-          {label}
-        </label>
+  label, 
+  icon, 
+  type = "text", 
+  value, 
+  onChange, 
+  placeholder, 
+  showToggle = false,
+  isPasswordVisible = false,
+  onTogglePassword 
+}: {
+  label: string;
+  icon: React.ReactNode;
+  type?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  showToggle?: boolean;
+  isPasswordVisible?: boolean;
+  onTogglePassword?: () => void;
+}) => (
+  <div className="space-y-1 sm:space-y-2">
+    {/* Label */}
+    <div className="flex items-center space-x-2 sm:space-x-3">
+      <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 flex-shrink-0">
+        {icon}
       </div>
-      <div className="relative">
-        <div className="absolute inset-0 bg-[rgba(143,208,198,0.2)] rounded-xl shadow-md"></div>
-        <input
-          type={showToggle ? (isPasswordVisible ? "text" : "password") : type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="relative w-full h-8 sm:h-10 lg:h-12 bg-transparent px-3 sm:px-4 outline-none text-black placeholder-gray-500 text-xs sm:text-sm lg:text-base rounded-xl"
-          placeholder={placeholder}
-          required
-        />
-        {showToggle && (
-          <button
-            type="button"
-            onClick={onTogglePassword}
-            className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 cursor-pointer hover:opacity-70 transition-opacity"
-          >
-            <svg className="block w-full h-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-              <g id="mi:eye-off">
-                <path d={svgPaths.p20746200} fill="black" id="Vector" />
-              </g>
-            </svg>
-          </button>
-        )}
-      </div>
+      <label className="text-xs sm:text-sm lg:text-base font-bold text-black">
+        {label}
+      </label>
     </div>
-  );
+
+    {/* Input field with background */}
+    <div className="relative">
+      {/* background layer now ignores mouse/touch events */}
+      <div className="absolute inset-0 bg-[rgba(143,208,198,0.2)] rounded-xl shadow-md pointer-events-none"></div>
+
+      <input
+        type={showToggle ? (isPasswordVisible ? "text" : "password") : type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="relative w-full h-8 sm:h-10 lg:h-12 bg-transparent px-3 sm:px-4 outline-none text-black placeholder-gray-500 text-xs sm:text-sm lg:text-base rounded-xl"
+        placeholder={placeholder}
+        required
+      />
+
+      {/* Toggle password visibility */}
+      {showToggle && (
+        <button
+          type="button"
+          onClick={onTogglePassword}
+          className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 cursor-pointer hover:opacity-70 transition-opacity"
+        >
+          <svg className="block w-full h-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+            <g id="mi:eye-off">
+              <path d={svgPaths.p20746200} fill="black" id="Vector" />
+            </g>
+          </svg>
+        </button>
+      )}
+    </div>
+  </div>
+);
+
 
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
