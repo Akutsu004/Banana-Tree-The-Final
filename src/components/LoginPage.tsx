@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import svgPaths from "../imports/svg-jz2xrexjqy";
 import imgImage4 from "figma:asset/5017518084d8e2da3eb7a4d8843f9a47b53a628c.png";
 import imgInstagram from "figma:asset/f84727ee43d25ab1ff7ed6cb4ad7423f545650d3.png";
@@ -17,12 +17,18 @@ export function LoginPage({ onNavigateToRegister, onLogin }: LoginPageProps) {
     password: ''
   });
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = useCallback((field: string, value: string) => {
     setLoginForm(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
+
+  // Create stable field handlers
+  const fieldHandlers = useMemo(() => ({
+    username: (e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('username', e.target.value),
+    password: (e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('password', e.target.value),
+  }), [handleInputChange]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +89,7 @@ export function LoginPage({ onNavigateToRegister, onLogin }: LoginPageProps) {
                     <input
                       type="text"
                       value={loginForm.username}
-                      onChange={(e) => handleInputChange('username', e.target.value)}
+                      onChange={fieldHandlers.username}
                       className="relative w-full h-12 sm:h-14 lg:h-16 bg-transparent px-4 lg:px-6 outline-none text-black placeholder-gray-500 text-sm sm:text-base lg:text-lg rounded-2xl"
                       placeholder="Enter username"
                       required
@@ -111,7 +117,7 @@ export function LoginPage({ onNavigateToRegister, onLogin }: LoginPageProps) {
                     <input
                       type={showPassword ? "text" : "password"}
                       value={loginForm.password}
-                      onChange={(e) => handleInputChange('password', e.target.value)}
+                      onChange={fieldHandlers.password}
                       className="relative w-full h-12 sm:h-14 lg:h-16 bg-transparent px-4 lg:px-6 pr-12 lg:pr-16 outline-none text-black placeholder-gray-500 text-sm sm:text-base lg:text-lg rounded-2xl"
                       placeholder="Enter password"
                       required
